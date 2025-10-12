@@ -5,11 +5,27 @@ from utils.common_utils import pc_numpy_2_o3d
 
 
 def load_road_split_labels(label_path):
+    """
+    Load road split labels from a binary file.
+
+    :param label_path: Path to the binary file containing the labels
+    :return: NumPy array of shape (N, 1) containing the road split labels
+    """
     labels = np.fromfile(label_path, dtype=np.uint32).reshape((-1, 1))
     return labels
 
 
 def split_pc(labels):
+    """
+    Split point cloud indices based on semantic labels.
+
+    :param labels: NumPy array of shape (N, 1) containing semantic labels for each point
+    :return: Tuple containing four lists of indices:
+             - inx_road_arr: Indices of points labeled as road (40)
+             - inx_other_road_arr: Indices of points labeled as parking (44) or sidewalk (48)
+             - inx_other_ground_arr: Indices of points labeled as terrain (70 or 71)
+             - inx_no_road_arr: Indices of points not matching any of the above categories
+    """
     inx_road_arr = []   
     inx_other_road_arr = [] 
     inx_other_ground_arr = []   
@@ -37,6 +53,21 @@ def split_pc(labels):
 
 
 def road_split(pc, road_pc_path, road_label_path):
+    """
+    Split point cloud into road and non-road points using semantic labels.
+
+    This function either loads a pre-computed road point cloud or generates a new one
+    by filtering and processing the input point cloud based on semantic labels.
+    It creates a clean road surface using alpha shapes and outlier removal techniques.
+
+    :param pc: Input point cloud as a NumPy array of shape (N, 3)
+    :param road_pc_path: Path to save/load the processed road point cloud
+    :param road_label_path: Path to the semantic labels file
+    :return: Tuple containing:
+             - road_pc: Processed road point cloud as NumPy array
+             - _pc_non_road: Non-road points from the input point cloud
+             - labels: Semantic labels loaded from file
+    """
     pc_path = road_pc_path
     label_path = road_label_path
 

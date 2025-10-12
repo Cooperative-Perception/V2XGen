@@ -6,10 +6,10 @@ import utils.common_utils as common
 
 def show_mesh_with_pcd(mesh, pcd):
     """
-    visualize mesh and pcd
-    :param mesh:
-    :param pcd:
-    :return:
+    Visualize a 3D mesh and a point cloud in an interactive window.
+
+    :param mesh: Open3D TriangleMesh object to visualize
+    :param pcd: Open3D PointCloud object to visualize alongside the mesh
     """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
@@ -34,9 +34,9 @@ def show_mesh_with_pcd(mesh, pcd):
 
 def show_mesh_with_box(mesh_obj):
     """
-    visualize mesh and bounding box
-    :param mesh_obj:
-    :return:
+    Visualize a 3D mesh and its minimal oriented bounding box.
+
+    :param mesh_obj: Open3D TriangleMesh object to visualize with its bounding box
     """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
@@ -67,6 +67,12 @@ def show_mesh_with_box(mesh_obj):
 
 
 def show_pc_with_box(pc, box):
+    """
+    Visualize a numpy point cloud and a 3D bounding box.
+
+    :param pc: Numpy array of shape (N, 3) or (N, 4) representing the point cloud
+    :param box: Open3D geometry (e.g., AxisAlignedBoundingBox, OrientedBoundingBox) for visualization
+    """
     pcd = common.pc_numpy_2_o3d(pc)
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
@@ -87,6 +93,11 @@ def show_pc_with_box(pc, box):
 
 
 def show_bg_with_boxes(v2x_info):
+    """
+    Visualize the background point cloud and all vehicle bounding boxes from a V2XInfo object.
+
+    :param v2x_info: V2XInfo object containing background point cloud and vehicle info
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -112,6 +123,12 @@ def show_bg_with_boxes(v2x_info):
 
 
 def show_obj_with_car_id(v2x_info, car_id):
+    """
+    Visualize the background point cloud and the bounding box of a specific vehicle.
+
+    :param v2x_info: V2XInfo object containing point cloud and vehicle info
+    :param car_id: ID of the specific vehicle to highlight
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -139,6 +156,12 @@ def show_obj_with_car_id(v2x_info, car_id):
 
 
 def show_obj_with_corner(v2x_info, corner):
+    """
+    Visualize the background point cloud and a custom bounding box (as cylinders).
+
+    :param v2x_info: V2XInfo object containing the background point cloud
+    :param corner: List/array of 8 (x,y,z) coordinates defining the bounding box corners
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -185,6 +208,11 @@ def show_obj_with_corner(v2x_info, corner):
 
 
 def show_pc(v2x_info):
+    """
+    Visualize the background point cloud and all vehicle bounding boxes (simplified).
+
+    :param v2x_info: V2XInfo object containing background point cloud and vehicle info
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -209,6 +237,12 @@ def show_pc(v2x_info):
 
 
 def show_ego_and_cp_pc(ego_info, cp_info):
+    """
+    Visualize point clouds and vehicle boxes from both ego and cooperative vehicles.
+
+    :param ego_info: V2XInfo object for the ego vehicle
+    :param cp_info: V2XInfo object for the cooperative vehicle
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -243,6 +277,14 @@ def show_ego_and_cp_pc(ego_info, cp_info):
 
 
 def show_ego_and_cp_with_id(ego_info, cp_info, ego_id, cp_id):
+    """
+    Visualize ego/coop point clouds and highlight specific vehicle IDs.
+
+    :param ego_info: V2XInfo object for the ego vehicle
+    :param cp_info: V2XInfo object for the cooperative vehicle
+    :param ego_id: ID of the specific vehicle to highlight in the ego object
+    :param cp_id: ID of the specific vehicle to highlight in the coop object (unused in current code)
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -279,6 +321,13 @@ def show_ego_and_cp_with_id(ego_info, cp_info, ego_id, cp_id):
 
 
 def show_ego_and_cp_with_corner(ego_info, cp_info, corner):
+    """
+    Visualize ego and cooperative point clouds with a custom bounding box.
+
+    :param ego_info: V2XInfo object containing ego vehicle's point cloud and parameters
+    :param cp_info: V2XInfo object containing cooperative vehicle's point cloud and parameters
+    :param corner: List/array of 8 (x,y,z) coordinates defining the custom bounding box corners
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -331,6 +380,14 @@ def show_ego_and_cp_with_corner(ego_info, cp_info, corner):
 
 
 def show_ego_and_cp_for_translation(ego_info, cp_info, car_id, corner):
+    """
+    Visualize ego and cooperative point clouds with vehicle bounding boxes for translation check.
+
+    :param ego_info: V2XInfo object for the ego vehicle
+    :param cp_info: V2XInfo object for the cooperative vehicle
+    :param car_id: ID of the vehicle in ego_info to visualize
+    :param corner: Coordinates of the translated bounding box corners to visualize
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)
@@ -365,6 +422,13 @@ def show_ego_and_cp_for_translation(ego_info, cp_info, car_id, corner):
 
 
 def show_obj_for_translation(v2x_info, car_id, corner):
+    """
+    Visualize a vehicle's original and translated bounding boxes.
+
+    :param v2x_info: V2XInfo object containing the point cloud and vehicle information
+    :param car_id: ID of the vehicle to visualize
+    :param corner: Coordinates of the translated bounding box corners
+    """
     vis = o3d.visualization.Visualizer()
     vis.create_window(config.lidar_config.window_name, width=config.lidar_config.window_width,
                       height=config.lidar_config.window_height)

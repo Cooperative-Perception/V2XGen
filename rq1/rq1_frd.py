@@ -18,7 +18,12 @@ def rq1_vis_parser():
 
 
 def read_from_json(file_path):
-    """ read json """
+    """
+    Read json from file path.
+
+    :param file_path: file path
+    :return: the content in JSON format if is read successfully
+    """
     try:
         with open(file_path, 'r') as f:
             return json.load(f)
@@ -31,7 +36,13 @@ def read_from_json(file_path):
 
 
 def save_to_json(file_path, data_list):
-    """ save to json """
+    """
+    Save to json.
+
+    :param file_path: file path
+    :param file_path: data_list path
+    :return:
+    """
     try:
         with open(file_path, 'w') as f:
             json.dump(data_list, f, indent=4)
@@ -90,6 +101,16 @@ def get_saved_dict(ego_info, cp_info, ego_info_baseline, cp_info_baseline,
 
 
 def rq1_frd(method):
+    """
+    From the 1st to 9th data scenarios of the test dataset,
+    save the original data respectively, and generate new data
+    according to the baseline and V2XGen methods.
+    The generated results will be used to calculate the FRD index
+    through the lidargen project, and this index can measure the fidelity of the generated data.
+
+    :param method: the method to generate data
+    :return:
+    """
     filename = f"rq1/rq1_cut_center.json"
     cut_data_list = read_from_json(filename)
 
@@ -146,7 +167,7 @@ def rq1_frd(method):
                         continue
                     selected_car_id.append(car_id)
                     if len(selected_car_id) == total_car_num:
-                        # 场景中只有协同车
+                        # There is only a cooperative vehicle in the scenario.
                         saved_center_dict = get_saved_dict(ego_info, cp_info, ego_info_baseline, cp_info_baseline,
                                                            -1, -1, -1, -1, bg_index)
                         op_count += 1

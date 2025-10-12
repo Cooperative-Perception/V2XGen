@@ -15,7 +15,12 @@ def rq2_vis_parser():
 
 
 def read_from_json(file_path):
-    """ read json file """
+    """
+    Read json from file path.
+
+    :param file_path: file path
+    :return: the content in JSON format if is read successfully
+    """
     try:
         with open(file_path, 'r') as f:
             return json.load(f)
@@ -29,11 +34,13 @@ def read_from_json(file_path):
 
 def rq2_vis(scene=1):
     """
-    RQ2_vis: visualize the data, requiring complete and occlusion insert.
+    Visualization of RQ2: Visualize the generated data,
+    which needs to cover road completion and occluded area insertion operations.
     """
     # load dataset config
     dataset_config = Config(dataset="rq_eval")
     dataset_config.dataset_path = os.path.join(dataset_config.dataset_root, "rq3/test_dataset")
+
     # begin_index = dataset_config.begin_index
     selected_index_list = read_from_json("rq_eval/selected_number.json")["selected"]
     trans_index_list = sorted(selected_index_list)

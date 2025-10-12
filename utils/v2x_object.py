@@ -11,13 +11,16 @@ from utils.common_utils import pc_numpy_2_o3d
 
 class V2XInfo:
     """
-    Load V2X Vehicle and Road Info
+    Load and manage V2X (Vehicle-to-Everything) data, including vehicle info, road point clouds, and labels.
     """
 
     def __init__(self, bg_index, is_ego=True, dataset_config=None):
         """
-        1. load vehicle's data and labels
-        2. split road
+        Initialize the V2XInfo class by loading data and initializing core attributes.
+
+        :param bg_index: Index of the background frame to load (for matching point cloud/label files).
+        :param is_ego: Boolean indicating if the data belongs to the ego vehicle (True) or a cooperative vehicle (False).
+        :param dataset_config: Configuration object containing paths to dataset directories (e.g., ego/coop PC/label dirs).
         """
         self.bg_index = bg_index
         self.is_ego = is_ego
@@ -51,6 +54,12 @@ class V2XInfo:
         return len(list(self.param['vehicles'].keys()))
 
     def load_vehicles_info(self):
+        """
+        Parse vehicle parameters from self.param and store in self.vehicles_info.
+
+        Extracts vehicle pose (yaw, location), dimensions (length/width/height),
+        and computes 3D bounding box corners for each vehicle.
+        """
         objs_yaw = []
         objs_yaw_degree = []
         objs_l = []
@@ -92,6 +101,11 @@ class V2XInfo:
             corners_lidar = corners_lidar[1:]
 
     def load_data_path(self):
+        """
+        Construct paths to point cloud, label, and road data files.
+
+        :return: Dictionary containing paths to background PC, param YAML, road PC, and road label.
+        """
         # dataset path config
         # bg_pc_path = os.path.join(self.dataset_config.ego_pc_dir, f"{self.bg_index:06d}.bin")
         bg_pc_path = os.path.join(self.dataset_config.ego_pc_dir, f"{self.bg_index:06d}.pcd")
@@ -120,11 +134,26 @@ class V2XInfo:
         return path_info
 
     def delete_vehicle_of_id(self, car_id):
+        """
+        Delete a vehicle from the current frame by ID.
+
+        :param car_id: ID of the vehicle to delete (must exist in self.param['vehicles']).
+        """
         self.param['vehicles'].pop(car_id, None)
         self.vehicles_info.pop(car_id, None)
         self.recent_deleted_car_id = car_id
 
     def update_param_for_insert(self, extent, location, rz_degree, use_old_id=False, ass_id=-1):
+        """
+        Add a new vehicle to the current frame and update parameters.
+
+        :param extent: Half-extents of the new vehicle (numpy array: [half-length, half-width, half-height]).
+        :param location: Location of the new vehicle (numpy array: [x, y, z]).
+        :param rz_degree: Yaw angle of the new vehicle (degrees, around Z-axis).
+        :param use_old_id: Boolean indicating if the most recently deleted ID should be reused (if available).
+        :param ass_id: Associated ID for the new vehicle (default: -1).
+        :return: ID of the newly added vehicle.
+        """
         if len(list(self.param['vehicles'].keys())) == 0:
             car_id = 1
         elif use_old_id and self.recent_deleted_car_id != -1:
@@ -145,15 +174,22 @@ class V2XInfo:
         self.load_vehicles_info()
         return car_id
 
+
     def save_data_and_label(self, folder_name, save_to_pcd=False):
         """
-        -folder_name
-        |-0
-            -xxx.bin
-            -xxx.yaml
-        |-1
-            -xxx.bin
-            -xxx.yaml
+        Save the current frame's point cloud and parameters to files.
+
+        Directory structure:
+        - folder_name
+          |- 0 (ego vehicle)
+              |- xxx.bin/.pcd (point cloud)
+              |- xxx.yaml (parameters)
+          |- 1 (cooperative vehicle)
+              |- xxx.bin/.pcd (point cloud)
+              |- xxx.yaml (parameters)
+
+        :param folder_name: Name of the root folder to save data.
+        :param save_to_pcd: Boolean indicating if point cloud should be saved as .pcd (True) or .bin (False).
         """
         saved_dir = os.path.join(self.dataset_config.v2x_dataset_saved_dir, folder_name)
 
@@ -184,6 +220,12 @@ class V2XInfo:
 
     @staticmethod
     def completed_pc(mixed_pc_three):
+        """
+        Add a fourth channel (zero intensity) to a 3-channel (XYZ) point cloud.
+
+        :param mixed_pc_three: Numpy array of shape (N, 3) (XYZ coordinates).
+        :return: Numpy array of shape (N, 4) (XYZ + zero intensity).
+        """
         assert mixed_pc_three.shape[1] == 3
 
         hang = mixed_pc_three.shape[0]
@@ -194,20 +236,12 @@ class V2XInfo:
     @staticmethod
     def pcd_file_to_np(pcd_file):
         """
-        Read  pcd and return numpy array.
+        Read a .pcd file and convert it to a numpy array (XYZ + intensity).
 
-        Parameters
-        ----------
-        pcd_file : str
-            The pcd file that contains the point cloud.
-
-        Returns
-        -------
-        pcd : o3d.PointCloud
-            PointCloud object, used for visualization
-        pcd_np : np.ndarray
-            The lidar data in numpy format, shape:(n, 4)
-
+        :param pcd_file: Path to the .pcd file.
+        :return: Tuple containing:
+            - pcd: Open3D PointCloud object (for visualization).
+            - pcd_np: Numpy array of shape (N, 4) (XYZ + intensity, float32).
         """
         pcd = o3d.io.read_point_cloud(pcd_file)
 

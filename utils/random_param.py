@@ -5,7 +5,11 @@ import numpy as np
 
 def get_random_rotation(min_range=5, max_range=30):
     """
-    random rotation degree, [-30,-5] or [5,30]
+    Generate a random rotation angle within specified ranges.
+
+    :param min_range: Minimum absolute value of the rotation angle (default: 5 degrees)
+    :param max_range: Maximum absolute value of the rotation angle (default: 30 degrees)
+    :return: Random rotation angle in degrees
     """
     range1 = (-max_range, -min_range)
     range2 = (min_range, max_range)
@@ -19,7 +23,12 @@ def get_random_rotation(min_range=5, max_range=30):
 
 def get_insert_location(v2x_info):
     """
-    Randomly generate insert coordinates based on the road split extent.
+    Randomly generate insertion coordinates and orientation within road boundaries.
+
+    :param v2x_info: Object containing road point cloud data (v2x_info.road_pc)
+    :return: Tuple containing:
+             - [pos_x, pos_y]: Randomly generated 2D coordinates within road boundaries
+             - degree: Random rotation angle in degrees from get_random_rotation()
     """
     road_pc = v2x_info.road_pc
     road_x = road_pc[:, 0]

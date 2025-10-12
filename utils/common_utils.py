@@ -9,6 +9,16 @@ from scipy.spatial.transform import Rotation as RR
 
 
 def pc_numpy_2_o3d(pc):
+    """
+    Convert a NumPy-formatted point cloud to an Open3D point cloud object.
+
+    Supports two input formats:
+    1. 4-channel point cloud (Nx4): contains x, y, z coordinates and intensity
+    2. 3-channel point cloud (Nx3): contains only x, y, z coordinates
+
+    :param pc: Point cloud data as a NumPy array, shape (N, 3) or (N, 4)
+    :return: Open3D PointCloud object
+    """
     if isinstance(pc, np.ndarray) and pc.shape[1] == 4:
         xyz = pc[:, :3]
         intensity = pc[:, 3:4]
@@ -36,6 +46,13 @@ def pcd_to_np(pcd):
 
 
 def get_obj_pcd_from_corner(corner, bg_pcd):
+    """
+    Convert Open3D PointCloud object to NumPy array.
+
+    :param corner:
+    :param bg_pcd: Open3D PointCloud object
+    :return: NumPy array of shape (N, 4) with dtype float32
+    """
     min_bound = np.min(corner, axis=0)
     max_bound = np.max(corner, axis=0)
     bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
@@ -44,6 +61,16 @@ def get_obj_pcd_from_corner(corner, bg_pcd):
 
 
 def get_corners(param):
+    """
+    Compute the 3D bounding box corners for all vehicles in the scene.
+
+    Processes vehicle parameters from a scene dictionary, converts them into
+    LiDAR coordinate system bounding boxes, and computes the 3D corners for each box.
+
+    :param param: Dictionary containing scene information, must have a 'vehicles' key
+                  with vehicle details (angle, extent, location, center)
+    :return: Array of shape (N, 8, 3) representing the 3D corners of each vehicle's bounding box
+    """
     objs_ry = []
     objs_l = []
     objs_w = []
@@ -72,6 +99,17 @@ def get_corners(param):
 
 
 def get_corners_positions(param):
+    """
+    Compute 3D bounding box corners and return vehicle position information.
+
+    :param param: Dictionary containing scene information, must have a 'vehicles' key
+                 with vehicle details (angle, extent, location, center)
+    :return: Tuple containing:
+            - corners_lidar: Array of shape (N, 8, 3) representing the 3D corners of each bounding box
+            - objs_ry_degree: List of yaw angles in degrees for each vehicle
+            - objs_loc: List of vehicle locations in LiDAR coordinates
+            - objs_h: List of vehicle heights
+    """
     objs_ry = []
     objs_ry_degree = []
     objs_l = []
@@ -101,6 +139,15 @@ def get_corners_positions(param):
 
 
 def find_cp_vehicle_id(cp_info, ego_id):
+    """
+    Find the cooperative perception vehicle ID corresponding to the ego vehicle ID.
+
+    :param cp_info: Cooperative perception information object containing vehicle data
+    :param ego_id: ID of the ego vehicle to find in the cooperative perception data
+    :return: Tuple containing:
+             - cp_id: The cooperative perception vehicle ID if found, otherwise -1
+             - found: Boolean indicating whether a match was found
+    """
     for cp_id, cp_vehicle in cp_info.param['vehicles'].items():
         if cp_vehicle['ass_id'] == ego_id:
             return cp_id, True
@@ -109,6 +156,13 @@ def find_cp_vehicle_id(cp_info, ego_id):
 
 
 def get_pc_index_in_corner(pc, corner):
+    """
+    Find the indices of point cloud points that lie within a 3D bounding box defined by its corners.
+
+    :param pc: Input point cloud as a NumPy array of shape (N, 3) or (N, 4)
+    :param corner: Array of shape (8, 3) representing the 8 corners of a 3D bounding box
+    :return: NumPy array of indices of points that lie within the bounding box
+    """
     min_bound = np.min(corner, axis=0)
     max_bound = np.max(corner, axis=0)
     indices = np.where(
@@ -121,6 +175,14 @@ def get_pc_index_in_corner(pc, corner):
 
 
 def center_system_transform(center, cur_lidar_pose, tar_lidar_pose):
+    """
+    Transform a 3D point from one LiDAR coordinate system to another.
+
+    :param center: 3D point coordinates in the current LiDAR frame (shape: [3])
+    :param cur_lidar_pose: 4x4 transformation matrix of the current LiDAR in world coordinates
+    :param tar_lidar_pose: 4x4 transformation matrix of the target LiDAR in world coordinates
+    :return: Transformed 3D point coordinates in the target LiDAR frame (shape: [3])
+    """
     center_pos = np.append(center, 1)
     T_cur_tar = np.linalg.inv(tar_lidar_pose) @ cur_lidar_pose
     target_pos = T_cur_tar @ center_pos
@@ -128,6 +190,14 @@ def center_system_transform(center, cur_lidar_pose, tar_lidar_pose):
 
 
 def points_system_transform(points, cur_lidar_pose, tar_lidar_pose):
+    """
+    Transform a set of 3D points from one LiDAR coordinate system to another.
+
+    :param points: List or array of 3D points in the current LiDAR frame (shape: [N, 3])
+    :param cur_lidar_pose: 4x4 transformation matrix of the current LiDAR in world coordinates
+    :param tar_lidar_pose: 4x4 transformation matrix of the target LiDAR in world coordinates
+    :return: List of transformed 3D points in the target LiDAR frame (shape: [N, 3])
+    """
     tar_points = []
     for pt in points:
         tar_pt = center_system_transform(pt, cur_lidar_pose, tar_lidar_pose)
@@ -136,6 +206,14 @@ def points_system_transform(points, cur_lidar_pose, tar_lidar_pose):
 
 
 def rz_degree_system_transform(rz_degree, cur_lidar_pose, tar_lidar_pose):
+    """
+    Transform a rotation angle around the Z-axis from one LiDAR coordinate system to another.
+
+    :param rz_degree: Rotation angle around Z-axis in degrees (yaw) in current LiDAR frame
+    :param cur_lidar_pose: 4x4 transformation matrix of the current LiDAR in world coordinates
+    :param tar_lidar_pose: 4x4 transformation matrix of the target LiDAR in world coordinates
+    :return: Rotation angle around Z-axis in degrees in target LiDAR frame
+    """
     theta = np.radians(rz_degree)
 
     Rz = np.array([
@@ -158,6 +236,13 @@ def rz_degree_system_transform(rz_degree, cur_lidar_pose, tar_lidar_pose):
 
 
 def is_box_containing_points(box, points):
+    """
+    Check if a 3D bounding box contains any of the given points.
+
+    :param box: Array of shape (8, 3) representing the 8 corners of a 3D bounding box
+    :param points: List or array of 3D points (shape: [N, 3]) to check against the box
+    :return: True if any point is inside the box, False otherwise
+    """
     min_bound = np.min(box, axis=0)
     max_bound = np.max(box, axis=0)
 
@@ -173,6 +258,13 @@ def is_box_containing_points(box, points):
 
 
 def is_box_containing_position(box, position):
+    """
+    Check if a single 3D position lies within a 3D bounding box.
+
+    :param box: Array of shape (8, 3) representing the 8 corners of a 3D bounding box
+    :param position: 3D point coordinates (shape: [3]) to check against the box
+    :return: True if the position is inside the box, False otherwise
+    """
     min_bound = np.min(box, axis=0)
     max_bound = np.max(box, axis=0)
 
@@ -185,6 +277,13 @@ def is_box_containing_position(box, position):
 
 
 def is_boxes_overlap(box1, box2):
+    """
+    Check if two 3D bounding boxes overlap in their 2D projections.
+
+    :param box1: Array of shape (8, 3) representing the 8 corners of the first 3D bounding box
+    :param box2: Array of shape (8, 3) representing the 8 corners of the second 3D bounding box
+    :return: True if the 2D projections of the boxes intersect, False otherwise
+    """
     box1_2d = box1[:, :2]
     box2_2d = box2[:, :2]
 
@@ -195,11 +294,26 @@ def is_boxes_overlap(box1, box2):
 
 
 def param_vehicle_check(param):
+    """
+    Print the IDs of all vehicles in the parameter dictionary.
+
+    :param param: Dictionary containing vehicle information with a 'vehicles' key
+    """
     for key, value in param['vehicles'].items():
         print(key)
 
 
 def get_geometric_info(obj):
+    """
+    Calculate geometric properties of a 3D object.
+
+    :param obj: Object with get_min_bound() and get_max_bound() methods
+                (e.g., Open3D geometry object)
+    :return: Tuple containing:
+             - half_diagonal: Half the length of the diagonal in the XY-plane
+             - center: Center coordinates [x, y, z]
+             - half_height: Half the height of the object
+    """
     min_xyz = obj.get_min_bound()
     max_xyz = obj.get_max_bound()
     x_min, x_max = min_xyz[0], max_xyz[0]
@@ -214,8 +328,9 @@ def get_geometric_info(obj):
 
 def corner_to_line_set_box(corner, line_color=[1, 0, 0]):
     """
-    param coners:
-    --------------
+    Create an Open3D LineSet representing a 3D bounding box from its corners.
+
+    The corners should be ordered as follows:
         4 -------- 5
        /|         /|
       7 -------- 6 .
@@ -224,7 +339,9 @@ def corner_to_line_set_box(corner, line_color=[1, 0, 0]):
       |/         |/
       3 -------- 2
 
-    return line_set
+    :param corner: Array of shape (8, 3) representing the 8 corners of the 3D bounding box
+    :param line_color: RGB color for the box lines (default: red [1, 0, 0])
+    :return: Open3D LineSet object representing the 3D bounding box
     """
     lines_box = np.array([[0, 1], [1, 2], [2, 3], [3, 0], [0, 4], [1, 5], [2, 6], [3, 7],
                           [4, 5], [5, 6], [6, 7], [7, 4]])
@@ -240,6 +357,15 @@ def corner_to_line_set_box(corner, line_color=[1, 0, 0]):
 
 
 def create_cylinder_between_points(point1, point2, radius=0.02, resolution=20):
+    """
+    Create a 3D cylinder between two points in space.
+
+    :param point1: First endpoint of the cylinder (shape: [3])
+    :param point2: Second endpoint of the cylinder (shape: [3])
+    :param radius: Radius of the cylinder (default: 0.02)
+    :param resolution: Number of vertices around the circumference (default: 20)
+    :return: Open3D TriangleMesh object representing the cylinder
+    """
     point1 = np.array(point1)
     point2 = np.array(point2)
 
@@ -265,6 +391,14 @@ def create_cylinder_between_points(point1, point2, radius=0.02, resolution=20):
 
 
 def get_box_corners(center, extent):
+    """
+    Calculate the 8 corners of an axis-aligned 3D bounding box.
+
+    :param center: Center coordinates of the box [x, y, z]
+    :param extent: Half-extents of the box [l, w, h] representing half of
+                   the length, width, and height respectively
+    :return: NumPy array of shape (8, 3) containing the coordinates of all 8 corners
+    """
     x, y, z = center
     l, w, h = extent
 
@@ -284,7 +418,13 @@ def get_box_corners(center, extent):
 
 def get_euler_from_matrix(R):
     """
-    
+    Convert a rotation matrix to Euler angles.
+
+    :param R: 3x3 rotation matrix (numpy array)
+    :return: Tuple containing the Euler angles in radians for rotations around:
+             - X-axis (sciangle_0)
+             - Y-axis (sciangle_1)
+             - Z-axis (sciangle_2)
     """
     euler_type = "XYZ"
 
@@ -295,14 +435,23 @@ def get_euler_from_matrix(R):
 
 def get_box3d_R(box3d):
     """
-    return
-    ------
-    box3d.R: 
+    Get a copy of the rotation matrix from a 3D box object.
+
+    :param box3d: A 3D box object that contains a rotation matrix (R) as an attribute
+    :return: A copy of the 3x3 rotation matrix from the box3d object
     """
     return copy.copy(box3d.R)
 
 
 def crop_point_cloud(pc, center, size):
+    """
+    Crop a point cloud to a square region in the XY-plane.
+
+    :param pc: Input point cloud as a NumPy array of shape (N, 3) or (N, 4)
+    :param center: Center coordinates of the cropping region [x, y, z]
+    :param size: Side length of the square cropping region
+    :return: Cropped point cloud as a NumPy array
+    """
     x, y, z = center
 
     x_min = x - size / 2

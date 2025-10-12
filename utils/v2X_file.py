@@ -8,19 +8,11 @@ import open3d as o3d
 
 def load_yaml(file, opt=None):
     """
-    Load v2v4real yaml file and return a dictionary.
+    Load a V2X4Real YAML configuration file and return it as a dictionary.
 
-    Parameters
-    ----------
-    file : string
-        yaml file path.
-
-    opt : argparser
-         Argparser.
-    Returns
-    -------
-    param : dict
-        A dictionary that contains defined parameters.
+    :param file: Yaml file path.
+    :param opt: Argparser.
+    :return param: A dictionary that contains defined parameters.
     """
     if opt and opt.model_dir:
         file = os.path.join(opt.model_dir, 'config.yaml')
@@ -46,7 +38,13 @@ def load_yaml(file, opt=None):
 
 def get_labels(rz_degree, lidar_box, image_box, truncation_ratio):
     """
-    v2v label to kitti label
+    Convert V2X box data to KITTI format labels.
+
+    :param rz_degree: Rotation angle around Z-axis (yaw) in degrees
+    :param lidar_box: 3D bounding box object from LiDAR detection
+    :param image_box: Optional 2D bounding box in image coordinates (xmin, ymin, xmax, ymax)
+    :param truncation_ratio: Optional truncation ratio of the object in the image
+    :return: List of strings representing the KITTI formatted label line
     """
     place_holder = -1111
     label_2_prefix = ["Car", "0.00", "0", "-10000"]
@@ -78,13 +76,8 @@ def save_yaml(data, save_name):
     """
     Save the dictionary into a yaml file.
 
-    Parameters
-    ----------
-    data : dict
-        The dictionary contains all data.
-
-    save_name : string
-        Full path of the output yaml file.
+    :param data: The dictionary contains all data.
+    :param save_name: Full path of the output yaml file.
     """
 
     with open(save_name, 'w') as outfile:
@@ -92,6 +85,13 @@ def save_yaml(data, save_name):
 
 
 def read_Bin_PC(path, retrun_r=False):
+    """
+    Read a point cloud from a binary file or NumPy array file.
+
+    :param path: Path to the point cloud file (.bin or .npy)
+    :param retrun_r: If True, return the full point data including the fourth channel.
+                     If False, return only the XYZ coordinates (default: False)
+    """
     if path.split(".")[-1] == "npy":
         example = np.load(path).astype(np.float32)
     else:
@@ -107,18 +107,9 @@ def pcd_to_np(pcd_file):
     """
     Read  pcd and return numpy array.
 
-    Parameters
-    ----------
-    pcd_file : str
-        The pcd file that contains the point cloud.
-
-    Returns
-    -------
-    pcd : o3d.PointCloud
-        PointCloud object, used for visualization
-    pcd_np : np.ndarray
-        The lidar data in numpy format, shape:(n, 4)
-
+    :param pcd_file: The pcd file that contains the point cloud.
+    :return pcd: PointCloud object, used for visualization
+            pcd_np: The lidar data in numpy format, shape:(n, 4)
     """
     pcd = o3d.io.read_point_cloud(pcd_file)
 
@@ -132,6 +123,11 @@ def pcd_to_np(pcd_file):
 
 
 def complet_pc(mixed_pc_three):
+    """
+    Complete a 3-channel point cloud by adding a fourth channel of zeros.
+
+    :param mixed_pc_three: A numpy array of shape (N, 3) representing point cloud data with XYZ coordinates
+    """
     assert mixed_pc_three.shape[1] == 3
 
     hang = mixed_pc_three.shape[0]
@@ -141,12 +137,24 @@ def complet_pc(mixed_pc_three):
 
 
 def load_pc(bg_index, pc_path):
+    """
+    Load a background point cloud from a binary file.
+
+    :param bg_index: Index of the background frame to load
+    :param pc_path: Directory containing the point cloud files
+    """
     bg_pc_path = os.path.join(pc_path, f"{bg_index:06d}.bin")
     bg_xyz = read_Bin_PC(bg_pc_path)
     return bg_xyz
 
 
 def load_label(bg_index, label_path):
+    """
+    Load the label data for a specific background frame.
+
+    :param bg_index: Index of the background frame to load
+    :param label_path: Directory containing the label files
+    """
     bg_label_path = os.path.join(label_path, f"{bg_index:06d}.yaml")
     param = load_yaml(bg_label_path)
     return param

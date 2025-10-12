@@ -16,7 +16,12 @@ def rq2_vis_parser():
 
 
 def read_from_json(file_path):
-    """ read json file """
+    """
+    Read json from file path.
+
+    :param file_path: file path
+    :return: the content in JSON format if is read successfully
+    """
     try:
         with open(file_path, 'r') as f:
             return json.load(f)
@@ -32,6 +37,7 @@ def rq2_gen(method, is_gen=True):
     """
     RQ2: Perform the method transformation on each selected data and
     save the transformation result.
+
     :param method: transformation times
     :param is_gen: original data or generated data
     :return:
@@ -49,7 +55,6 @@ def rq2_gen(method, is_gen=True):
         #     f"{dataset_config.dataset_root}/rq3/rq3_test/ori_data"
         # dataset_config.dataset_path = os.path.join(dataset_config.dataset_root, "rq3/test_dataset")
     else:
-        # TODO
         dataset_config.v2x_dataset_saved_dir = \
             f"{dataset_config.dataset_root}/rq_eval/rq2_gen/trans_M{OP_TIMES}"
 
