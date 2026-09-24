@@ -20,7 +20,7 @@ conda activate v2xgen
 Pytorch installation, pytorch >= 1.12.0
 
 ```shell
-conda install pytorch==1.12.0 torchvision=0.13.0 cudatoolkit=11.3 -c pytorch -c conda-forge
+conda install pytorch==1.12.0 torchvision==0.13.0 cudatoolkit=11.3 -c pytorch -c conda-forge
 ```
 
 spconv 2.x installation
@@ -96,7 +96,7 @@ The final dataset folder structure should as follows:
 
 ### 
 
-### Model Donwload
+### Model Download
 
 You need to download the cooperative 3D detection models [here](github.com/ucla-mobility/V2V4Real?tag=readme-ov-file#benchmark), and unzip them in the model folder.
 
@@ -157,7 +157,7 @@ $  python lidargen.py --fid --exp kitti_pretrained --config kitti.yml
 Half of the sequences are randomly selected and saved as a training set for retrain and a test set for testing.
 
 ```shell
-$ python rq2/rq2_dataset_split.py -d ${dataset_path}
+$ python rq2/rq2_dataset_split.py -d ${dataset}
 ```
 
 #### 2. Generate data for select
@@ -165,7 +165,7 @@ $ python rq2/rq2_dataset_split.py -d ${dataset_path}
 RQ2 requires three transformations of the train dataset, the resulting dataset v2x_gen used for data selection and models retrain.
 
 ```shell
-$ python rq2/rq2_gen.py -m ${times}		# times in [1, 2, 3] 
+$ python rq2/rq2_gen.py -m 1  # -m 1/2/3
 ```
 
 #### 3. Visulize
@@ -173,7 +173,12 @@ $ python rq2/rq2_gen.py -m ${times}		# times in [1, 2, 3]
 If you want to visualize the transformation result, you need to comment out the visual annotations of the core/obj_insert.py and core/delete.py.
 
 ```shell
-$ python rq2_rq2_vis.py -s ${scene_id}
+$ python rq2/rq2_vis.py -s ${scene_id}
+```
+
+Rationalize all generated frames
+```shell
+$ python rq2_valid_frame_generator.py --dataset_dir ${dataset}/rq_eval/rq2_gen --model_dir model/late_fusion --dataset_type rq2 --output_dir ${dataset}/rq_eval_valid/rq2_gen
 ```
 
 #### 4. Evaluate train dataset and select data based on the method
@@ -181,7 +186,7 @@ $ python rq2_rq2_vis.py -s ${scene_id}
 The experiment consisted of six models, and needed to choose different fusion methods late/early/intermediate according to the models.
 
 ```shell
-$ python opencood/rq_eval/rq2_inference.py --dataset_dir ${dataset}/rq2/rq2_gen --model_dir model/early_fusion --fusion_method early
+$ python opencood/rq_eval/rq2_inference.py --dataset_dir ${dataset}/rq_eval_valid/rq2_gen --model_dir model/early_fusion --fusion_method early --alpha 0.5 --beta 0.5
 ```
 
 ### RQ3
@@ -191,7 +196,7 @@ $ python opencood/rq_eval/rq2_inference.py --dataset_dir ${dataset}/rq2/rq2_gen 
 We selected 10% and 15% data from the v2x_gen dataset to retrain different models.
 
 ```shell
-$ python opencood/rq_eval/rq3_train.py --dataset_dir  ${dataset}/rq2/rq2_select --model_dir model/early_fusion --method v2x_gen --scale 0.15
+$ python opencood/rq_eval/rq3_train.py --dataset_dir ${project_path}/rq2/rq2_select --model_dir model/early_fusion --method v2x_gen --scale 0.15
 ```
 
 - method: we choose v2x_gen data select method
@@ -202,7 +207,7 @@ $ python opencood/rq_eval/rq3_train.py --dataset_dir  ${dataset}/rq2/rq2_select 
 We evaluate the results of the retraining models based on three defined metrics AP_50, occlusion error and long-distance error.
 
 ```shell
-$ python opencood/rq2/rq3_inference.py --scale 0.1 --method ori --dataset_dir ${dataset}/rq2/rq2_select/v2x_gen/0.15/early_fusion --model_dir model/early_fusion --fusion_method early
+$ python opencood/rq_eval/rq3_inference.py --scale 0.15 --method v2x_gen --dataset_dir ${dataset}/rq3/rq3_test_valid --model_dir model/early_fusion --fusion_method early
 ```
 
 - `${dataset}/rq2/rq2_select/v2x_gen/0.15/early_fusion`: you can choose 0.1 scale and other retrain models
@@ -225,7 +230,7 @@ $ python opencood/rq2/rq3_inference.py --scale 0.1 --method ori --dataset_dir ${
 ├── rq2                   rq2 data generation and visulization
 ├── requirements.txt
 ├── rq_tools.py           init dataset
-├── copy_pcd_files.py
+├── dataset_init.py
 ├── logger.py             log
 ├── setup.py
 └── visual.py

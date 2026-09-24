@@ -7,6 +7,7 @@ from config.config import Config
 from utils.v2x_object import V2XInfo
 
 
+# 解析场景索引参数 -s
 def rq2_vis_parser():
     parser = argparse.ArgumentParser(description="rq1 command")
     parser.add_argument('-s', '--scene', help="the scene of dataset", default=1)
@@ -42,7 +43,7 @@ def rq2_vis(scene=1):
     dataset_config.dataset_path = os.path.join(dataset_config.dataset_root, "rq3/test_dataset")
 
     # begin_index = dataset_config.begin_index
-    selected_index_list = read_from_json("rq_eval/selected_number.json")["selected"]
+    selected_index_list = read_from_json("/home/zyc/code/V2XGen/rq2/selected_number.json")["selected"]
     trans_index_list = sorted(selected_index_list)
 
     for bg_index in trans_index_list:
@@ -51,7 +52,6 @@ def rq2_vis(scene=1):
 
         car_id = random.choice(list(ego_info.vehicles_info.keys()))
         print(list(ego_info.vehicles_info.keys()))
-        car_id = 5
         success_flag = trans.vehicle_delete(ego_info, cp_info, car_id)
 
 

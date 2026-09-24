@@ -30,6 +30,7 @@ def rq1_vis(transformation='insert', scene=1):
 
     select_data_num = dataset_config.select_data_num
 
+    # 帧遍历：在指定的背景帧范围内循环。
     for bg_index in range(1, select_data_num + 1):
         if bg_index < begin_index:
             continue
@@ -39,12 +40,15 @@ def rq1_vis(transformation='insert', scene=1):
         CLogger.info(f"Background {bg_index}")
 
         # load vehicle info
+        # 为每一帧创建 ego_info 和 cp_info 对象（代表 V2XGen 组）
         ego_info = V2XInfo(bg_index, dataset_config=dataset_config)
         cp_info = V2XInfo(bg_index, is_ego=False, dataset_config=dataset_config)
+        # 使用 copy.deepcopy 创建完全一致的 baseline 副本（代表 Baseline 组）
         ego_info_baseline = copy.deepcopy(ego_info)
         cp_info_baseline = copy.deepcopy(cp_info)
 
-        # random select car
+        # random select car 
+        # 从当前帧已有的车辆中随机选出一个 car_id（除插入操作外，其余操作都需要指定目标车）
         car_id = random.choice(list(ego_info.vehicles_info.keys()))
 
         if transformation == 'insert':

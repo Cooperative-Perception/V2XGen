@@ -9,9 +9,10 @@ import baseline_transformation as baseline
 # All operations are integrated into the insert and delete operations.
 # The translation, rotation and scaling operations need to delete the vehicle first, and then
 # insert the vehicle according to the new parameters generated.
-
+# 先删除再重新插入
 
 def vehicle_insert(ego_info, cp_info, ego_info_baseline, cp_info_baseline):
+    #在随机位置插入新车，成功后同步在 Baseline 数据中也执行插入。
     """
     Insert a car at a randomly generated location in the cooperative-detection scene.
 
@@ -44,6 +45,7 @@ def vehicle_insert(ego_info, cp_info, ego_info_baseline, cp_info_baseline):
 
 
 def vehicle_delete(ego_info, cp_info, ego_info_baseline, cp_info_baseline, car_id=0):
+    # 删除指定 ID 的车辆，并返回删除前的中心坐标。
     """
     Delete a car of the car_id in the cooperative-detection scene.
 
@@ -77,6 +79,7 @@ def vehicle_translation(ego_info, cp_info, ego_info_baseline, cp_info_baseline, 
     :return: car id for cut (if needed)
     """
     CLogger.info(f"Background index = {ego_info.bg_index}, translate vehicle car id = {car_id}")
+    original_corner = ego_info.vehicles_info[car_id]['corner'].copy()
     success_flag = False
     cnt = 1
 
@@ -100,7 +103,7 @@ def vehicle_translation(ego_info, cp_info, ego_info_baseline, cp_info_baseline, 
 
         # insert car to new location
         position, rz_degree = rand.get_insert_location(ego_info)
-        success_flag, ego_id, cp_id = insert.vehicle_insert(ego_info, cp_info, position, True, True, rz_degree, transformation="rotation")
+        success_flag, ego_id, cp_id = insert.vehicle_insert(ego_info, cp_info, position, True, True, rz_degree,gt_box=original_corner, transformation="rotation")
 
         if success_flag:
             base_ego_id, base_cp_id = baseline.vehicle_translate(ego_info_baseline, cp_info_baseline, car_id, position[:2])
@@ -146,7 +149,7 @@ def vehicle_scaling(ego_info, cp_info, ego_info_baseline, cp_info_baseline, car_
         if cnt >= 10:
             return False, -1, -1, -1, -1
 
-        ratio = random.uniform(min_ratio, max_ratio)
+        ratio = random.uniform(min_ratio, max_ratio)   # 在 0.9 - 1.1 倍之间随机选择缩放比例
         CLogger.info(f"try scaling {cnt} times..., scaling ratio = {ratio}")
         corner_center = np.mean(ego_corner, axis=0)
         vectors = ego_corner - corner_center
@@ -194,23 +197,29 @@ def vehicle_rotation(ego_info, cp_info, ego_info_baseline, cp_info_baseline, car
         if cnt >= 10:
             return False, -1, -1, -1, -1
 
-        rot_degree = rand.get_random_rotation()
+        rot_degree = rand.get_random_rotation()  # 通过 rand.get_random_rotation 获取一个随机旋转增量
         CLogger.info(f"try rotation {cnt} times..., rot degree = {rot_degree}")
-        rz_degree = org_degree + rot_degree
+        rz_degree = org_degree + rot_degree  # 原角度+增量  然后重新插入
 
         success_flag, ego_id, cp_id = insert.vehicle_insert(ego_info, cp_info, position, False, True, rz_degree, corner, transformation="rotation")
 
         if success_flag:
             if ego_id == -1:
                 baseline_ego_id = random.choice(list(ego_info_baseline.vehicles_info.keys()))
+                # 当ego_id为-1时，Ego端没有成功插入，使用baseline的角度
+                ego_rz_degree = ego_info_baseline.vehicles_info[baseline_ego_id]['yaw_degree'] + rot_degree
             else:
                 baseline_ego_id = ego_id
+                ego_rz_degree = ego_info.vehicles_info[ego_id]['yaw_degree'] + rot_degree
+                
             if cp_id == -1:
                 baseline_cp_id = random.choice(list(cp_info_baseline.vehicles_info.keys()))
+                # 当cp_id为-1时，CP端没有成功插入，使用baseline的角度
+                cp_rz_degree = cp_info_baseline.vehicles_info[baseline_cp_id]['yaw_degree'] + rot_degree
             else:
                 baseline_cp_id = cp_id
-            ego_rz_degree = ego_info.vehicles_info[baseline_ego_id]['yaw_degree'] + rot_degree
-            cp_rz_degree = cp_info.vehicles_info[baseline_cp_id]['yaw_degree'] + rot_degree
+                cp_rz_degree = cp_info.vehicles_info[cp_id]['yaw_degree'] + rot_degree
+                
             base_ego_id, base_cp_id = baseline.vehicle_rotation(ego_info_baseline, cp_info_baseline, car_id, ego_rz_degree, cp_rz_degree)
             return True, ego_id, cp_id, base_ego_id, base_cp_id
 

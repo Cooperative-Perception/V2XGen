@@ -40,6 +40,10 @@ class Config:
             # 200 random data
             dataset = "rq1/random_200"
             self.select_data_num = 200
+        elif dataset == "rq2":
+            dataset = "rq2/pre_trans_dataset"
+        elif dataset == "rq3":
+            dataset = "rq2/test_dataset"
         # rq_eval data generate
         elif dataset == "rq_eval":
             dataset = "rq2/pre_trans_dataset"

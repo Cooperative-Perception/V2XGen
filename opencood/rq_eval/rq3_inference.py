@@ -111,6 +111,29 @@ def main():
                 else:
                     raise NotImplementedError('Only early, late and intermediate'
                                               'fusion is supported.')
+                                
+                # # 1) 先拿到 ego 侧的 v2x_gen 参数，并限制在本帧有效 id 内
+                # ego_v2x_gen_dict = batch_data['ego']['v2x_gen']
+                # ego_v2x_gen_dict = get_valid_param_dict(ego_v2x_gen_dict, batch_data['ego']['object_ids'])
+                
+                # # 2) 设定阈值
+                # occ_thr = 0.05
+                # dist_thr = 50.0
+                
+                # # 3) 计算需要保留的 object id
+                # keep_ids = []
+                # for oid in gt_object_ids:
+                #     p = ego_v2x_gen_dict.get(oid, None)
+                #     if p is None:
+                #         continue
+                #     if (p['ego_occlusion_rate'] > occ_thr) or (p['ego_distance'] > dist_thr):
+                #         keep_ids.append(oid)
+                
+                # # 4) 用 keep_ids 过滤 gt_box_tensor（保持 box 与 id 顺序一致）
+                # keep_idx = [i for i, oid in enumerate(gt_object_ids) if oid in set(keep_ids)]
+                # gt_box_tensor = gt_box_tensor[keep_idx]
+                # gt_object_ids = [gt_object_ids[i] for i in keep_idx]
+
                 # overall calculating
                 fp, tp, gt, false_pred_ids = eval_utils.caluclate_tp_fp(pred_box_tensor,
                                                                         pred_score,

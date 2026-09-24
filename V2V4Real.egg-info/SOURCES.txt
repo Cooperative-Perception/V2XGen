@@ -18,8 +18,6 @@ core/occlusion_treatment.py
 examples/__init__.py
 examples/obj_transformation_demo.py
 examples/v2xgen_demo.py
-lidar_simulation/__init__.py
-lidar_simulation/lidar_simulation.py
 opencood/__init__.py
 opencood/version.py
 opencood/data_utils/__init__.py

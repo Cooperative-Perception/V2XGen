@@ -13,17 +13,33 @@ from core.obj_insert import insert_obj
 from core.occlusion_treatment import get_delete_points_idx
 from core.lidar_simulation import lidar_simulation, lidar_intensity_convert
 
-
+# 控制流函数，执行高级删除逻辑
 def vehicle_delete(ego_info, cp_info, car_id):
-    # CLogger.info(f"background index = {ego_info.bg_index}, delete ego vehicle id = {car_id}")
+    CLogger.info(f"background index = {ego_info.bg_index}, delete ego vehicle id = {car_id}")
 
     # visualize before delete
     corner = ego_info.vehicles_info[car_id]["corner"]
     # vis.show_obj_with_corner(ego_info, corner)
     # cp_corner = common.points_system_transform(corner, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
-    # cp_corner = cp_info.vehicles_info[1]["corner"]
+
+    # # cp_car_id = car_id # 或者通过 ass_id 匹配，取决于你的数据集映射逻辑
+    # # if cp_car_id in cp_info.vehicles_info:
+    # #     cp_corner = cp_info.vehicles_info[cp_car_id]["corner"]
+    # # # 执行协作车视角的删除/处理逻辑...
+    # # else:
+    # #     CLogger.info(f"Vehicle {cp_car_id} not found in CP view, skipping CP deletion.")
+
+    # # cp_corner = cp_info.vehicles_info[1]["corner"]
     # vis.show_obj_with_corner(cp_info, cp_corner)
     # vis.show_ego_and_cp_with_corner(cp_info, ego_info, cp_corner)
+
+    # # # visualize before delete
+    # #   corner = ego_info.vehicles_info[car_id]["corner"]
+    # # # vis.show_obj_with_corner(ego_info, corner)
+    # # # cp_corner = common.points_system_transform(corner, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
+    # # # cp_corner = cp_info.vehicles_info[1]["corner"]
+    # # # vis.show_obj_with_corner(cp_info, cp_corner)
+    # # # vis.show_ego_and_cp_with_corner(cp_info, ego_info, cp_corner)
 
     # for cut
     ego_center = list(ego_info.vehicles_info[car_id]["center"])[:2]
@@ -65,7 +81,7 @@ def vehicle_delete(ego_info, cp_info, car_id):
 
     return True, ego_center, cp_center
 
-
+# 实现带有“背景修补”的点云删除
 def delete_obj_from_pcd(v2x_info, car_id):
     bg_pcd = pc_numpy_2_o3d(v2x_info.pc)
     road_pcd = pc_numpy_2_o3d(v2x_info.road_pc)
@@ -110,7 +126,7 @@ def delete_obj_from_pcd(v2x_info, car_id):
 
     return shadow_mesh
 
-
+# 处理“露出来的”车辆补全
 def insert_after_delete(deleted_v2x_info, other_v2x_info, part_result, full_result):
     if len(part_result) != 0:
         for car_id in part_result:
@@ -145,7 +161,7 @@ def is_deleted_cp_vehicle(ego_info, cp_info, ego_id):
         return True
     return False
 
-
+# 基准baseline删除函数
 def base_delete(ego_info, cp_info, car_id):
     """
     baseline delete transformation

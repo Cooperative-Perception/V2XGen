@@ -42,6 +42,9 @@ class V2XInfo:
 
         self.pc = bg_pc
         self.param = param
+        # === 显式记录 insert 车辆的 ID ===
+        if 'inserted_ids' not in self.param:
+            self.param['inserted_ids'] = []
         self.road_pc = road_pc
         self.no_road_pc = non_road_pc
         self.road_label = road_label
@@ -171,6 +174,14 @@ class V2XInfo:
         }
 
         self.param['vehicles'][car_id] = car_dict
+        # === 显式记录新插入车辆 ID ===
+        ids = self.param.setdefault('inserted_ids', [])
+        # 如果是复用旧 ID，需要清理旧的 inserted_ids 记录
+        if use_old_id and self.recent_deleted_car_id != -1:
+        # 移除旧的记录（如果有）
+            if self.recent_deleted_car_id in ids:
+                ids.remove(self.recent_deleted_car_id)
+            ids.append(car_id)
         self.load_vehicles_info()
         return car_id
 

@@ -10,14 +10,14 @@ from config.config import Config
 from utils.v2x_object import V2XInfo
 
 
-def rq1_vis_parser():
+def rq1_vis_parser(): # 解析命令行参数
     parser = argparse.ArgumentParser(description="rq1 command")
     parser.add_argument('-m', '--method', help="the transformation times of frames", default=1)
     args = parser.parse_args()
     return args
 
 
-def read_from_json(file_path):
+def read_from_json(file_path):# 读取 JSON 文件，若文件不存在或读取失败则返回空列表。
     """
     Read json from file path.
 
@@ -35,7 +35,7 @@ def read_from_json(file_path):
         return []
 
 
-def save_to_json(file_path, data_list):
+def save_to_json(file_path, data_list): # 将数据列表以缩进格式保存为 JSON
     """
     Save to json.
 
@@ -50,7 +50,7 @@ def save_to_json(file_path, data_list):
         print(f"Cant write to file: {e}")
 
 
-def update_to_list(data_list, turn_dict):
+def update_to_list(data_list, turn_dict): # 根据背景索引 bg_index 更新列表，若已存在则替换，不存在则追加。
     is_exist = False
     for i, entry in enumerate(data_list):
         if entry.get("bg_index") == turn_dict.get("bg_index"):
@@ -61,7 +61,7 @@ def update_to_list(data_list, turn_dict):
     if not is_exist:
         data_list.append(turn_dict)
 
-
+# 提取并封装变换后的 V2X 和 Baseline 车辆中心点坐标，用于后续的裁剪操作。
 def get_saved_dict(ego_info, cp_info, ego_info_baseline, cp_info_baseline,
                    v2x_ego_id, v2x_cp_id, baseline_ego_id, baseline_cp_id, bg_index):
     if baseline_ego_id == -1:
@@ -99,7 +99,8 @@ def get_saved_dict(ego_info, cp_info, ego_info_baseline, cp_info_baseline,
 
     return saved_dict
 
-
+# 主循环函数。遍历 9 个场景，随机采样 50 帧，
+# 并根据 method 指定的次数随机调用不同的变换函数，最后保存结果和原始备份。
 def rq1_frd(method):
     """
     From the 1st to 9th data scenarios of the test dataset,
@@ -114,7 +115,7 @@ def rq1_frd(method):
     filename = f"rq1/rq1_cut_center.json"
     cut_data_list = read_from_json(filename)
 
-    # traversal 9 scenes
+    # traversal 9 scenes 遍历 9 个不同的交通场景
     for i in range(1, 10):
         OP_TIMES = int(method)
 
@@ -125,13 +126,14 @@ def rq1_frd(method):
         scene_data_num = dataset_config.scene_data_num
         index_list = list(range(dataset_config.begin_index,
                                 dataset_config.begin_index + scene_data_num))
-    # 50 frames from each scene
+
+    # 50 frames from each scene   在每个场景中随机抽取 50 帧点云作为实验样本。
         random_index_list = random.sample(index_list, 50)
 
         for bg_index in random_index_list:
             ego_info = V2XInfo(bg_index, dataset_config=dataset_config)
             cp_info = V2XInfo(bg_index, is_ego=False, dataset_config=dataset_config)
-            ego_info_baseline = copy.deepcopy(ego_info)
+            ego_info_baseline = copy.deepcopy(ego_info) # 利用 copy.deepcopy 创建 Baseline 副本
             cp_info_baseline = copy.deepcopy(cp_info)
             ego_info_baseline.pc = ego_info_baseline.pc[:, :3]
             cp_info_baseline.pc = cp_info_baseline.pc[:, :3]
@@ -142,7 +144,7 @@ def rq1_frd(method):
             selected_car_id = []
             saved_center_dict = {}
 
-            # transformations times of each point cloud frame
+            # transformations times of each point cloud frame  随机变换循环（M 次）
             while op_count < OP_TIMES:
                 # random select a transformation
                 transformation_list = [
@@ -199,6 +201,7 @@ def rq1_frd(method):
                 elif transformation == "translation":
                     success_flag, v2x_ego_id, v2x_cp_id, base_ego_id, base_cp_id = \
                         trans.vehicle_translation(ego_info, cp_info, ego_info_baseline, cp_info_baseline, car_id)
+                    print(f"测试 {v2x_ego_id}")
                     # record center for cut
                     if success_flag:
                         saved_center_dict = get_saved_dict(ego_info, cp_info, ego_info_baseline, cp_info_baseline,
@@ -242,8 +245,8 @@ def rq1_frd(method):
             save_to_json(filename, cut_data_list)
 
             # copy the original data
-            ego_ori_path = f"{dataset_config.dataset_root}/v2v_test/0/velodyne/{bg_index:06d}.bin"
-            cp_ori_path = f"{dataset_config.dataset_root}/v2v_test/1/velodyne/{bg_index:06d}.bin"
+            ego_ori_path = f"{dataset_config.dataset_root}/v2x_dataset/0/velodyne/{bg_index:06d}.bin"
+            cp_ori_path = f"{dataset_config.dataset_root}/v2x_dataset/1/velodyne/{bg_index:06d}.bin"
             ego_save_folder = f"{dataset_config.dataset_root}/rq1/ori_M{OP_TIMES}/selected_ori_scene{i}/0"
             cp_save_folder = f"{dataset_config.dataset_root}/rq1/ori_M{OP_TIMES}/selected_ori_scene{i}/1"
             if not os.path.exists(ego_save_folder):

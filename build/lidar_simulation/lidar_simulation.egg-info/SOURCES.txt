@@ -1,8 +1,0 @@
-MANIFEST.in
-setup.py
-lidar_simulation/lidar_simulation.pyi
-lidar_simulation.egg-info/PKG-INFO
-lidar_simulation.egg-info/SOURCES.txt
-lidar_simulation.egg-info/dependency_links.txt
-lidar_simulation.egg-info/requires.txt
-lidar_simulation.egg-info/top_level.txt

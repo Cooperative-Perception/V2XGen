@@ -110,9 +110,28 @@ class User():
     else:
         self.infer_subset(loader=self.parser.get_test_set(),
                         to_orig_fn=self.parser.to_original, cnn=cnn, knn=knn)
-    print("Mean CNN inference time:{}\t std:{}".format(np.mean(cnn), np.std(cnn)))
-    print("Mean KNN inference time:{}\t std:{}".format(np.mean(knn), np.std(knn)))
-    print("Total Frames:{}".format(len(cnn)))
+    mean_cnn_time = np.mean(cnn) if cnn else 0.0
+    std_cnn_time = np.std(cnn) if cnn else 0.0
+    mean_post_time = np.mean(knn) if knn else 0.0
+    std_post_time = np.std(knn) if knn else 0.0
+    mean_cnn_fps = 1.0 / mean_cnn_time if mean_cnn_time > 0 else 0.0
+
+    print(
+        "Mean CNN inference time: {:.6f} sec, "
+        "std: {:.6f} sec, FPS: {:.3f}".format(
+            mean_cnn_time,
+            std_cnn_time,
+            mean_cnn_fps
+        )
+    )
+    print(
+        "Mean post-process time: {:.6f} sec, "
+        "std: {:.6f} sec".format(
+            mean_post_time,
+            std_post_time
+        )
+    )
+    print("Total processed scans: {}".format(len(cnn)))
     print("Finished Infering")
 
     return
@@ -223,23 +242,64 @@ class User():
 
             print(total_time / total_frames)
         else:
-            proj_output = self.model(proj_in)
-            proj_argmax = proj_output[0].argmax(dim=0)
-            if torch.cuda.is_available():
+            # 只测量模型前向推理时间
+            if self.gpu:
                 torch.cuda.synchronize()
-            res = time.time() - end
-            print("Network seq", path_seq, "scan", path_name,
-                  "in", res, "sec")
-            end = time.time()
-            cnn.append(res)
 
-            if torch.cuda.is_available():
+            network_start = time.perf_counter()
+
+            proj_output = self.model(proj_in)
+
+            if self.gpu:
                 torch.cuda.synchronize()
-            res = time.time() - end
-            print("Network seq", path_seq, "scan", path_name,
-                  "in", res, "sec")
-            end = time.time()
-            cnn.append(res)
+
+            network_time = time.perf_counter() - network_start
+            cnn.append(network_time)
+
+            print(
+                "Network seq", path_seq,
+                "scan", path_name,
+                "in", network_time, "sec",
+                "({:.3f} ms, {:.3f} FPS)".format(
+                    network_time * 1000,
+                    1.0 / network_time if network_time > 0 else 0.0
+                )
+            )
+
+            # 网络输出转换为类别
+            proj_argmax = proj_output[0].argmax(dim=0)
+
+            # 单独测量后处理时间
+            if self.gpu:
+                torch.cuda.synchronize()
+
+            post_start = time.perf_counter()
+
+            if self.post:
+                unproj_argmax = self.post(
+                    proj_range,
+                    unproj_range,
+                    proj_argmax,
+                    p_x,
+                    p_y
+                )
+            else:
+                unproj_argmax = proj_argmax[p_y, p_x]
+
+            if self.gpu:
+                torch.cuda.synchronize()
+
+            post_time = time.perf_counter() - post_start
+            knn.append(post_time)
+
+            print(
+                "Post-process seq", path_seq,
+                "scan", path_name,
+                "in", post_time, "sec",
+                "({:.3f} ms)".format(post_time * 1000)
+            )
+
+
 
             if self.post:
                 # knn postproc

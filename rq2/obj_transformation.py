@@ -49,7 +49,7 @@ def vehicle_delete(ego_info, cp_info, car_id=0):
     :param car_id: the car id for delete
     :return: transformation result, True or False
     """
-    CLogger.info(f"background index = {ego_info.bg_index}, delete ego vehicle id = {car_id}")
+    # CLogger.info(f"background index = {ego_info.bg_index}, delete ego vehicle id = {car_id}")
     success_flag, v2x_ego_center, v2x_cp_center = \
         delete.vehicle_delete(ego_info, cp_info, car_id)
     if success_flag:
@@ -194,6 +194,9 @@ def label_complete_for_ego(ego_info, cp_info):
     :param cp_info: cooperative vehicle info
     :return:
     """
+    # 标签补全（主车视角）。计算每个目标相对于主车的
+    # 遮挡率（Occlusion Rate）和距离，并处理坐标系转换
+
     for car_id, car_info in ego_info.param["vehicles"].items():
         ego_car_center = car_info["location"]
         ego2cp_center = center_system_transform(ego_car_center, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
@@ -247,6 +250,8 @@ def label_complete_for_cp(ego_info, cp_info):
     :param cp_info: cooperative vehicle info
     :return:
     """
+    # 标签补全（协作端视角）。计算目标相对于协作端的遮挡率和距离，确保双端标签一致性
+
     cp_ass_id_list = []
 
     for car_id, car_info in cp_info.param["vehicles"].items():

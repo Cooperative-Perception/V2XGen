@@ -336,6 +336,109 @@ class VoxelPostprocessor(BasePostprocessor):
 
         return pred_box3d_tensor, scores
 
+    def post_process_cp_local(self, data_dict, output_dict):
+        """
+        Process the outputs of the model to 2D/3D bounding box for CP vehicle.
+        This method keeps predictions in CP's local coordinate system (no projection to ego space).
+        
+        Parameters
+        ----------
+        data_dict : dict
+            The dictionary containing the origin input data of model.
+
+        output_dict :dict
+            The dictionary containing the output of the model.
+
+        Returns
+        -------
+        pred_box3d_tensor : torch.Tensor
+            The prediction bounding box tensor after NMS, in CP local coordinates.
+        scores : torch.Tensor
+            The prediction scores.
+        """
+        # the final bounding box list
+        pred_box3d_list = []
+        pred_box2d_list = []
+
+        for cav_id, cav_content in data_dict.items():
+            if cav_id not in output_dict:
+                continue
+            # For CP local processing, we DON'T use transformation matrix
+            # Keep everything in local coordinate system
+
+            # (H, W, anchor_num, 7)
+            anchor_box = cav_content['anchor_box']
+
+            # classification probability
+            prob = output_dict[cav_id]['psm']
+            prob = F.sigmoid(prob.permute(0, 2, 3, 1))
+            prob = prob.reshape(1, -1)
+
+            # regression map
+            reg = output_dict[cav_id]['rm']
+
+            # convert regression map back to bounding box
+            # (N, W*L*anchor_num, 7)
+            batch_box3d = self.delta_to_boxes3d(reg, anchor_box)
+            mask = \
+                torch.gt(prob, self.params['target_args']['score_threshold'])
+            mask = mask.view(1, -1)
+            mask_reg = mask.unsqueeze(2).repeat(1, 1, 7)
+
+            # during validation/testing, the batch size should be 1
+            assert batch_box3d.shape[0] == 1
+            boxes3d = torch.masked_select(batch_box3d[0],
+                                          mask_reg[0]).view(-1, 7)
+            scores = torch.masked_select(prob[0], mask[0])
+
+            # convert output to bounding box
+            if len(boxes3d) != 0:
+                # (N, 8, 3) - KEEP IN LOCAL COORDINATES (NO PROJECTION)
+                boxes3d_corner = \
+                    box_utils.boxes_to_corners_3d(boxes3d,
+                                                  order=self.params['order'])
+                # NO projection to ego space - keep local coordinates
+                local_boxes3d = boxes3d_corner
+                
+                # convert 3d bbx to 2d, (N,4)
+                local_boxes2d = \
+                    box_utils.corner_to_standup_box_torch(local_boxes3d)
+                # (N, 5)
+                boxes2d_score = \
+                    torch.cat((local_boxes2d, scores.unsqueeze(1)), dim=1)
+
+                pred_box2d_list.append(boxes2d_score)
+                pred_box3d_list.append(local_boxes3d)
+
+        if len(pred_box2d_list) == 0 or len(pred_box3d_list) == 0:
+            return None, None
+            
+        # shape: (N, 5)
+        pred_box2d_list = torch.vstack(pred_box2d_list)
+        # scores
+        scores = pred_box2d_list[:, -1]
+        # predicted 3d bbx
+        pred_box3d_tensor = torch.vstack(pred_box3d_list)
+
+        # nms
+        keep_index = box_utils.nms_rotated(pred_box3d_tensor,
+                                           scores,
+                                           self.params['nms_thresh']
+                                           )
+
+        pred_box3d_tensor = pred_box3d_tensor[keep_index]
+        scores = scores[keep_index]
+
+        # filter out the prediction out of the range.
+        mask = \
+            box_utils.get_mask_for_boxes_within_range_torch(pred_box3d_tensor)
+        pred_box3d_tensor = pred_box3d_tensor[mask, :, :]
+        scores = scores[mask]
+
+        assert scores.shape[0] == pred_box3d_tensor.shape[0]
+
+        return pred_box3d_tensor, scores
+
     @staticmethod
     def delta_to_boxes3d(deltas, anchors):
         """

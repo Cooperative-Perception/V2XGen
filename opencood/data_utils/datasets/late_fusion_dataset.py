@@ -53,6 +53,8 @@ class LateFusionDataset(basedataset.BaseDataset):
         """
         selected_cav_processed = {}
 
+        inserted_ids = selected_cav_base['params'].get('inserted_ids', [])
+
         # filter lidar
         lidar_np = selected_cav_base['lidar_np']
         lidar_np = shuffle_points(lidar_np)
@@ -85,6 +87,12 @@ class LateFusionDataset(basedataset.BaseDataset):
         selected_cav_processed.update({'object_bbx_center': object_bbx_center,
                                        'object_bbx_mask': object_bbx_mask,
                                        'object_ids': object_ids})
+        
+        selected_cav_processed.update({'inserted_ids': inserted_ids})
+
+        # 保存完整的 vehicles 信息，包含 ass_id
+        vehicles_info = selected_cav_base['params'].get('vehicles', {})
+        selected_cav_processed.update({'vehicles': vehicles_info})
 
         # generate targets label
         label_dict = \
@@ -226,6 +234,11 @@ class LateFusionDataset(basedataset.BaseDataset):
             # TODO: add occlusion rate and distance for each object_id (late_fusion_dataset)
             v2x_gen_dict = cav_content['v2x_gen']
 
+            inserted_ids = cav_content.get('inserted_ids', [])
+            
+            # 获取 vehicles 信息（包含 ass_id）
+            vehicles_info = cav_content.get('vehicles', {})
+
             output_dict[cav_id].update({'object_bbx_center': object_bbx_center,
                                         'object_bbx_mask': object_bbx_mask,
                                         'processed_lidar': processed_lidar_torch_dict,
@@ -233,7 +246,9 @@ class LateFusionDataset(basedataset.BaseDataset):
                                         'object_ids': object_ids,
                                         'transformation_matrix': transformation_matrix_torch,
                                         'gt_transformation_matrix': gt_transformation_matrix_torch,
-                                        'v2x_gen': v2x_gen_dict})
+                                        'v2x_gen': v2x_gen_dict,
+                                        'inserted_ids': inserted_ids,
+                                        'vehicles': vehicles_info})
 
             if self.visualize:
                 origin_lidar = \
@@ -273,6 +288,39 @@ class LateFusionDataset(basedataset.BaseDataset):
 
         # TODO: get gt object ids
         gt_box_tensor, gt_object_ids = self.post_processor.generate_gt_bbx(data_dict)
+
+        return pred_box_tensor, pred_score, gt_box_tensor, gt_object_ids
+    
+    def post_process_cp(self, data_dict, output_dict):
+        """
+        Process the outputs of the model to 2D/3D bounding box.
+
+        Parameters
+        ----------
+        data_dict : dict
+            The dictionary containing the origin input data of model.
+
+        output_dict :dict
+            The dictionary containing the output of the model.
+
+        Returns
+        -------
+        pred_box_tensor : torch.Tensor
+            The tensor of prediction bounding box after NMS.
+        gt_box_tensor : torch.Tensor
+            The tensor of gt bounding box.
+        """
+        # Use CP local post-processing to keep predictions in CP coordinate system
+        if hasattr(self.post_processor, 'post_process_cp_local'):
+            pred_box_tensor, pred_score = \
+                self.post_processor.post_process_cp_local(data_dict, output_dict)
+        else:
+            # Fallback to original method if not available
+            pred_box_tensor, pred_score = \
+                self.post_processor.post_process(data_dict, output_dict)
+
+        # TODO: get gt object ids
+        gt_box_tensor, gt_object_ids = self.post_processor.generate_cp_gt_bbx(data_dict)
 
         return pred_box_tensor, pred_score, gt_box_tensor, gt_object_ids
 

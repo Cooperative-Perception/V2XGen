@@ -1,0 +1,151 @@
+# 操作系统自动生成的文件
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+__MACOSX/
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+
+# 编辑器与 IDE
+.idea/
+.vscode/
+.ipynb_checkpoints/
+*.swp
+*.swo
+*~
+
+# Python 缓存、测试缓存与打包产物
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# 虚拟环境与本地环境变量
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# 编译中间文件、动态/静态库及可执行文件
+*.o
+*.obj
+*.a
+*.lib
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app/
+*.class
+*.jar
+*.war
+*.ear
+*.pdb
+*.dSYM/
+# 崩溃转储（避免误忽略项目的 /core/ 源码目录）
+*.core
+core.[0-9]*
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+Makefile.in
+*.c.dep
+*.cpp.dep
+
+# 日志、临时文件和运行缓存
+*.log
+*.tmp
+*.temp
+*.bak
+*.cache
+*.pid
+*.seed
+logs/
+tmp/
+temp/
+runs/
+wandb/
+lightning_logs/
+events.out.tfevents.*
+DepthCapture_*.png
+DepthCamera_*.json
+
+# 压缩包、模型权重和训练/评估输出
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.engine
+/model/
+/model_*/
+/pretrained/
+**/pretrained/
+/rq_eval/
+/rq2_eval_valid/
+/statistical_analysis/
+/rq2/*.csv
+
+# 数据集及其复制、切分、筛选、增强和变换结果
+# 如需提交小型示例数据，可使用 !规则显式放行。
+/dataset/
+/dataset_train/
+/v2x_dataset/
+/v2x_train_dataset/
+/single_trans_data/
+/MultiTest/_datasets/
+/lidargen/
+
+# RQ1：复制的原始样本及随机变换结果
+/rq1/ori_*/
+/rq1/random_trans_*/
+
+# RQ2：预变换、切分、筛选、检测框及生成数据
+/rq2/pre_trans_dataset/
+/rq2/test_dataset/
+/rq2/train_dataset/
+/rq2/rq2_gen/
+/rq2/rq2_select/
+/rq2/rq2_det_box/
+/rq2/rq2_det_box_cp/
+
+# RQ3 与其他实验生成目录
+/rq3/
+/test1/
+
+/semantic/
+/rq2/selected_number.json
+/rq2/selected_train.json

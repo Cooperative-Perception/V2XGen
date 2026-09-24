@@ -21,21 +21,41 @@ from build.mtest.core.pose_estimulation.pose_generator import tranform_mesh_by_p
 def vehicle_insert(ego_info, cp_info, position, detection_flag=False, gt_flag=False,
                    gt_degree=0, gt_box=None, transformation="insert"):
     ego_success_flag, ego_mesh, ego_insert_info, ego_combined_pc = insert_obj(ego_info, position, detection_flag, gt_flag, gt_degree, gt_box)
+    
 
     if ego_success_flag:
         gt_degree = ego_insert_info["rz_degree"]
 
     cp_rz_degree = rz_degree_system_transform(gt_degree, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
+    # 利用 center_system_transform 将该位置同步到 CP 的坐标系
     cp_position = list(center_system_transform(position, ego_info.param['lidar_pose'], cp_info.param['lidar_pose']))[:2]
 
     if ego_success_flag:
         T_ego2cp = np.linalg.inv(cp_info.param["lidar_pose"]) @ ego_info.param["lidar_pose"]
         gt_mesh = ego_mesh.transform(T_ego2cp)
         cp_success_flag, cp_mesh, cp_insert_info, cp_combined_pc = insert_obj(cp_info, cp_position, False, True, cp_rz_degree, gt_mesh=gt_mesh)
+        if not cp_success_flag:
+            return False, -1, -1
     else:
         cp_success_flag, cp_mesh, cp_insert_info, cp_combined_pc = insert_obj(cp_info, cp_position, True, False)
+        if cp_success_flag:
+            # 从 CP 端获取插入信息
+            cp_rz_degree = cp_insert_info["rz_degree"]
+        
+            # 坐标系转换：CP → Ego
+            ego_rz_degree = rz_degree_system_transform(
+                cp_rz_degree, 
+                cp_info.param['lidar_pose'], 
+                ego_info.param['lidar_pose']
+            )
+            T_cp2ego = np.linalg.inv(ego_info.param["lidar_pose"]) @ cp_info.param["lidar_pose"]
+            ego_gt_mesh = cp_mesh.transform(T_cp2ego)
+            ego_success_flag, ego_mesh, ego_insert_info, ego_combined_pc = insert_obj(ego_info, position, False, True, ego_rz_degree, gt_mesh=ego_gt_mesh)
+            if not ego_success_flag:
+                return False, -1, -1
 
-    # set occlusion threshold of insert object
+    # set occlusion threshold of insert object 
+    # 计算遮挡率（Occlusion Rate），如果遮挡太严重（超过 0.9），则判定插入失败
     occlusion_threshold = 0.9
     if ego_success_flag:
         for val in ego_insert_info["occ_rate"].values():
@@ -54,7 +74,10 @@ def vehicle_insert(ego_info, cp_info, position, detection_flag=False, gt_flag=Fa
         return False, -1, -1
 
     # after this step, insert transformation success!
-
+    # 调用 occ.filter_part_occlusion_bg 剔除被新车挡住的背景点，保证物理一致性。
+    ego_id = -1
+    cp_id = -1
+    
     if ego_success_flag:
         if ego_combined_pc is not None:
             ego_info.pc = ego_combined_pc
@@ -104,15 +127,27 @@ def vehicle_insert(ego_info, cp_info, position, detection_flag=False, gt_flag=Fa
 
     CLogger.info(f"insert complete! insert vehicle at {position[:2]}!")
 
-    # visualize after insert transformation
+    # # visualize after insert transformation
     # if ego_success_flag:
-    #     vis.show_ego_and_cp_with_id(ego_info, cp_info, ego_id, cp_id)
-    #     vis.show_obj_with_car_id(ego_info, ego_id)
-    #     vis.show_obj_with_car_id(cp_info, cp_id)
-    #     vis.show_ego_and_cp_for_translation(ego_info, cp_info, ego_id, vis_corner)
-    #     vis.show_obj_for_translation(ego_info, ego_id, vis_corner)
-    #     vis_cp_corner = common.points_system_transform(vis_corner, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
-    #     vis.show_obj_for_translation(cp_info, cp_id, vis_cp_corner)
+
+
+    #     vis_corner = ego_info.vehicles_info[ego_id]['corner'] 
+    #     vis_cp_corner = common.points_system_transform(vis_corner, ego_info.param['lidar_pose'], cp_info.param['lidar_pose']) # 点云转换到cp视角      
+        
+    #     if gt_box is not None and transformation in ["rotation", "translation","scaling"]:
+    #         print(f"Visualizing {transformation}: Red=Original, White=New")
+    #         vis.show_ego_and_cp_for_translation_new(ego_info, cp_info, ego_id,gt_box,vis_corner)
+    #         vis.show_obj_for_translation_new(ego_info, gt_box, vis_corner)
+    #         vis.show_obj_for_translation_new(cp_info, gt_box, vis_cp_corner)
+
+    #     vis.show_ego_and_cp_with_id(ego_info, cp_info, ego_id, cp_id) # 在两端点云融合的基础上，显示特定 ID 的车辆
+    #     vis.show_obj_with_car_id(ego_info, ego_id) # 在ego点云中突出显示特定 ID 的车辆
+    #     vis.show_obj_with_car_id(cp_info, cp_id)   # 在cv 点云中突出显示特定 ID 的车辆
+    #     # vis_corner = ego_info.vehicles_info[ego_id]['corner']
+    #     vis.show_ego_and_cp_for_translation(ego_info, cp_info, ego_id, vis_corner) # 在融合的点云场景中，同时查看原始位置和变换后的位置
+    #     vis.show_obj_for_translation(ego_info, ego_id, vis_corner) # 对比显示ego的原始 Box 和 平移后的 Box
+    #     # vis_cp_corner = common.points_system_transform(vis_corner, ego_info.param['lidar_pose'], cp_info.param['lidar_pose'])
+    #     vis.show_obj_for_translation(cp_info, cp_id, vis_cp_corner) # 对比显示cv的原始 Box 和 平移后的 Box
     # elif transformation == "rotation":
     #     return False, -1, -1
     # else:
@@ -130,6 +165,7 @@ def vehicle_insert(ego_info, cp_info, position, detection_flag=False, gt_flag=Fa
     return True
 
 
+# V2XGen 核心生成逻辑
 def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degree=0, gt_box=None, gt_mesh=None):
     if v2x_info.get_vehicles_nums() == 0:
         corners_lidar = None
@@ -173,6 +209,7 @@ def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degre
         mesh_obj = gt_mesh
     else:
         mesh_obj = tranform_mesh_by_pose(mesh_obj_initial, position, rz_degree)
+        # tranform_mesh_by_pose 根据给定的坐标和旋转角度（Yaw），将 3D 模型移动到指定位置
 
     if detection_flag:
         # is mesh on road
@@ -184,7 +221,7 @@ def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degre
         # collision detect
         barycenter_xy = mesh_obj.get_center()[:2]
         if corners_lidar is not None:
-            success_flag = collision_detection(barycenter_xy, half_diagonal, objs_half_diagonal, objs_center,
+            success_flag = collision_detection(barycenter_xy, half_diagonal, objs_half_diagonal, objs_center,# 检查新车是否与场景中原有车辆 (corners_lidar) 发生重叠。
                                                len(initial_boxes))
             if not success_flag:
                 CLogger.info("insert position collision with other vehicles!")
@@ -195,7 +232,7 @@ def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degre
     box, angle = change_3dbox(box_inserted_o3d)
 
     try:
-        pcd_obj = lidar_simulation(mesh_obj)
+        pcd_obj = lidar_simulation(mesh_obj) # 调用 lidar_simulation 模拟激光雷达射线打在 Mesh 上生成的点云
     except ValueError:
         print("vehicles lidar simulation failed!")
         return False, None, None, None
@@ -206,7 +243,7 @@ def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degre
     location = box.center.copy()
 
     occ_rate_dict = occ.occlusion_rate_calculate(pcd_obj, v2x_info, position[2])
-    occluded_vehicles = occ.insert_occlusion_detect(mesh_obj, v2x_info, position[2])
+    occluded_vehicles = occ.insert_occlusion_detect(mesh_obj, v2x_info, position[2]) # 碰撞检测
 
     insert_info = {
         "extent": extent,
@@ -220,7 +257,7 @@ def insert_obj(v2x_info, position, detection_flag=False, gt_flag=False, gt_degre
 
     return True, mesh_obj, insert_info, combined_pc
 
-
+# 将 3D Mesh 模型进行缩放，使其符合目标边界框（Bounding Box）的尺寸
 def resize_mesh_to_box(mesh, target_box):
     mesh_min_bound = mesh.get_min_bound()
     mesh_max_bound = mesh.get_max_bound()
@@ -237,6 +274,7 @@ def resize_mesh_to_box(mesh, target_box):
     return mesh
 
 
+# 通过寻找最近的路面点云，自动确定车辆的 Z 轴高度
 def select_road_height(road_pc, position):
     road_x, road_y = road_pc[:, 0], road_pc[:, 1]
 
@@ -249,6 +287,7 @@ def select_road_height(road_pc, position):
     return nearest_pt_height
 
 
+# 检查插入位置是否在路面（Road）上，防止车出现在绿化带、建筑或空中
 def is_on_road(mesh_obj, road_pc, non_road_pc, position, threshold=0.1):
     box = mesh_obj.get_oriented_bounding_box()
     non_road_pcd = pc_numpy_2_o3d(non_road_pc)
@@ -266,6 +305,7 @@ def is_on_road(mesh_obj, road_pc, non_road_pc, position, threshold=0.1):
         return True
 
 
+# 检查新车是否与场景中原有的车辆发生空间重叠
 def collision_detection(xy, half_diagonal, objs_half_diagonal, objs_center, initial_box_num):
     occlusion_flag = config.not_behind_initial_obj and is_occlusion_initial_obj(xy, half_diagonal,
                                                                                 objs_center[0:initial_box_num],
@@ -308,8 +348,9 @@ def is_occlusion_initial_obj(xy, half_diagonal, centers, diagonals):
 
     return False
 
-
-def combine_pcd(v2x_info, obj, mesh):
+# 将新生成的车辆点云合并到背景点云中，并处理“影子区域”（即被新车挡住而消失的背景点）
+def combine_pcd(v2x_info, obj, mesh,z_offset):
+# def combine_pcd(v2x_info, obj, mesh):
     bg = pc_numpy_2_o3d(v2x_info.pc)
     print(bg.has_colors(), obj.has_colors())
 
@@ -324,6 +365,7 @@ def combine_pcd(v2x_info, obj, mesh):
     return combined_pc
 
 
+# 基准对照组入口，不进行复杂的物理遮挡剔除，主要用于对比实验（Baseline）
 def base_insert(ego_info, cp_info, position, rz_degree):
     ego_success_flag, ego_mesh, ego_insert_info, ego_combined_pc = insert_obj_simple(ego_info, position, rz_degree)
 
@@ -353,6 +395,7 @@ def base_insert(ego_info, cp_info, position, rz_degree):
     return True, ego_id, cp_id
 
 
+# 直接对 Mesh 进行均匀采样（sample_points_uniformly），不模拟激光雷达的射线特性
 def insert_obj_simple(v2x_info, position, rz_degree, gt_mesh=None):
     if gt_mesh is None:
         obj_filename = config.common_config.obj_filename
@@ -391,6 +434,7 @@ def insert_obj_simple(v2x_info, position, rz_degree, gt_mesh=None):
     return True, mesh_obj, insert_info, combine_pc
 
 
+# 将新生成的车辆点云合并到背景点云中，并处理“影子区域”（即被新车挡住而消失的背景点）
 def base_combine_pcd(v2x_info, obj, box):
     bg = pc_numpy_2_o3d(v2x_info.pc)
 
@@ -423,6 +467,7 @@ def base_combine_pcd(v2x_info, obj, box):
     return bg
 
 
+# 使用 RANSAC 算法 拟合路面平面方程，确定可行驶区域
 def get_road_plane_info(xyz):
     pcd = pc_numpy_2_o3d(xyz)
 
@@ -466,6 +511,7 @@ def get_road_plane_info(xyz):
     return idx, list(map(float, [min_x, max_x, min_y, max_y])), plane
 
 
+# 在检测到的路面上随机生成一个合法的坐标点
 def generate_base_insert_pos(bg_pc):
     road_pc_idx, road_pc_range, _ = get_road_plane_info(bg_pc)
     min_x, max_x, min_y, max_y = road_pc_range

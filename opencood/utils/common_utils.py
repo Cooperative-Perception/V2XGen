@@ -139,6 +139,7 @@ def compute_iou(box, boxes):
     return np.array(iou, dtype=np.float32)
 
 
+# 将3D 边界框（8 点顶点坐标）或 2D 边界框（4 点顶点坐标）转换为 Shapely 库中的 Polygon（多边形）对象
 def convert_format(boxes_array):
     """
     Convert boxes array to shapely.geometry.Polygon format.

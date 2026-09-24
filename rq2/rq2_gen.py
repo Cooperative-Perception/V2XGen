@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import argparse
 import obj_transformation as trans
@@ -6,7 +7,7 @@ from logger import CLogger
 from config.config import Config
 from utils.v2x_object import V2XInfo
 
-
+ # 解析命令行参数。-m 指定每帧变换次数，-g 指定是否生成数据
 def rq2_vis_parser():
     parser = argparse.ArgumentParser(description="rq1 command")
     parser.add_argument('-m', '--method', help="the transformation times of frames", default=1)
@@ -14,7 +15,7 @@ def rq2_vis_parser():
     args = parser.parse_args()
     return args
 
-
+# 通用工具函数，从 JSON 读取配置（如选定的索引列表）
 def read_from_json(file_path):
     """
     Read json from file path.
@@ -50,7 +51,8 @@ def rq2_gen(method, is_gen=True):
     if not is_gen:
         dataset_config.v2x_dataset_saved_dir = \
             f"{dataset_config.dataset_root}/rq2/rq2_gen/ori_data"
-
+        # dataset_config.v2x_dataset_saved_dir = \
+        #     f"{dataset_config.dataset_root}/rq2_eval_valid/rq2_gen/ori_train"
         # dataset_config.v2x_dataset_saved_dir = \
         #     f"{dataset_config.dataset_root}/rq3/rq3_test/ori_data"
         # dataset_config.dataset_path = os.path.join(dataset_config.dataset_root, "rq3/test_dataset")
@@ -63,11 +65,12 @@ def rq2_gen(method, is_gen=True):
         #         f"{dataset_config.dataset_root}/rq3/rq3_test/test_M{OP_TIMES}"
         # dataset_config.dataset_path = os.path.join(dataset_config.dataset_root, "rq3/test_dataset")
 
-    # load selected data index list
-    selected_index_list = read_from_json("rq_eval/selected_number.json")["test"]
+    # load selected data index list   加载 selected_number.json 中的测试索引
+    selected_index_list = read_from_json("/home/zyc/code/V2XGen/rq2/selected_number.json")["selected"]   # T1或T2
+    # selected_index_list = read_from_json("/home/zyc/code/V2XGen/rq2/selected_train.json")["selected"]  # 原始训练集  
     trans_index_list = sorted(selected_index_list)
 
-    for bg_index in trans_index_list:
+    for bg_index in trans_index_list: # 遍历每一帧点云（bg_index）。
         ego_info = V2XInfo(bg_index, dataset_config=dataset_config)
         cp_info = V2XInfo(bg_index, is_ego=False, dataset_config=dataset_config)
 
@@ -90,7 +93,10 @@ def rq2_gen(method, is_gen=True):
                 "scaling",
                 "rotation"
             ]
-            transformation = random.choice(transformation_list)
+            # transformation = random.choice(transformation_list)
+            transformation = "insert"
+            #根据 method（变体次数）循环执行随机变换
+            #（从 insert, delete, translation, scaling, rotation 中随机选一个）。
 
             CLogger.info(f"Background {bg_index}, {transformation} operation, M{op_count + 1}")
 
@@ -129,6 +135,7 @@ def rq2_gen(method, is_gen=True):
             op_count += 1
 
         # scan each vehicle in the label vehicle list, calculate the occlusion rate and distance, and save it in the tag
+        # 调用 label_complete 重新计算遮挡和距离标签 
         trans.label_complete_for_ego(ego_info, cp_info)
         trans.label_complete_for_cp(ego_info, cp_info)
 

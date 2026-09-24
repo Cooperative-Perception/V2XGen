@@ -60,6 +60,8 @@ def get_valid_param_dict(param_dict, valid_ids):
 
 
 def save_box_tensor(box_tensor, score_tensor, timestamp, save_path):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, exist_ok=True)
     det_np = torch_tensor_to_numpy(box_tensor)
     score_np = torch_tensor_to_numpy(score_tensor)
 

@@ -1,2 +1,0 @@
-recursive-include lidar_simulation *.pyi
-recursive-include lidar_simulation *.so

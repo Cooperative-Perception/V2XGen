@@ -110,7 +110,7 @@ def main():
 
     print('Training start')
     # epoches = hypes['train_params']['epoches']
-    epoches = init_epoch + 20    # train turns
+    epoches = init_epoch + 10    # train turns
     # used to help schedule learning rate
 
     # load rq_eval select data

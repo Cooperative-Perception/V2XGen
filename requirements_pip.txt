@@ -1,3 +1,4 @@
+# Python 业务库与深度学习框架
 absl-py==2.1.0
 addict==2.4.0
 astropy==4.3.1
@@ -22,8 +23,8 @@ google-auth==2.28.1
 google-auth-oauthlib==0.4.6
 grpcio==1.62.0
 idna==3.6
-imageio==2.31.2
-importlib-metadata==6.7.0
+imageio==2.31.2   #   版本要求pillow >= 8.3.2    
+importlib-metadata==6.7.0                     #  第1个
 importlib-resources==5.12.0
 ipython==7.34.0
 ipywidgets==8.1.2
@@ -40,6 +41,7 @@ markupsafe==2.1.5
 matplotlib==3.5.3
 matplotlib-inline==0.1.6
 meshio==5.1.2
+# mtest==1.0
 mypy==1.4.1
 mypy-extensions==1.0.0
 natsort==8.4.0
@@ -60,13 +62,15 @@ pandas==1.3.5
 parso==0.8.3
 pexpect==4.9.0
 pickleshare==0.7.5
+# pillow==6.1.0  matplotlib 3.5.3 (Line 42): 强制要求 pillow >= 6.2.0
+# pillow==6.2.2  Open3D 0.17.0 (关键冲突点): 这是一个现代版本的库，它强制要求 pillow>=9.3.0
 pillow==9.4.0
 pip==24.0
 pkg-about==1.0.8
 pkgutil-resolve-name==1.3.10
 plotly==5.18.0
 prompt-toolkit==3.0.43
-protobuf==3.20.3
+protobuf==3.20.3             #  第2个
 ptyprocess==0.7.0
 pyasn1==0.5.1
 pyasn1-modules==0.3.0
@@ -97,7 +101,7 @@ tenacity==8.2.3
 tensorboard==2.11.2
 tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.1
-termcolor==2.3.0
+termcolor==2.3.0                 #  第3个
 threadpoolctl==3.1.0
 tifffile==2021.11.2
 tomli==2.0.1
@@ -107,11 +111,11 @@ tqdm==4.66.2
 traitlets==5.9.0
 trimesh==4.4.1
 typed-ast==1.5.5
-typing-extensions==4.7.1
+typing-extensions==4.7.1         #  第4个
 update==0.0.1
 urllib3==2.0.7
 vispy==0.5.3
 wcwidth==0.2.13
 werkzeug==2.2.3
 widgetsnbextension==4.0.10
-zipp==3.15.0
+zipp==3.15.0                     #  第5个

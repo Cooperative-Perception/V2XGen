@@ -36,7 +36,7 @@ def load_pc(bg_index, pc_path):
     return bg_xyz
 
 
-def save_data(data, save_path):
+def save_data(data, save_path): # 补全点云维度（通常是 4 维）并保存为 .bin
     save_path_folder = os.path.dirname(save_path)
     if not os.path.exists(save_path_folder):
         os.makedirs(save_path_folder)
@@ -44,7 +44,7 @@ def save_data(data, save_path):
     complete_data.tofile(save_path)
 
 
-def crop_point_cloud(pc, center, size):
+def crop_point_cloud(pc, center, size): #在点云中截取以 center 为中心、size * size范围的方形区域
     x, y = center
 
     x_min = x - size / 2

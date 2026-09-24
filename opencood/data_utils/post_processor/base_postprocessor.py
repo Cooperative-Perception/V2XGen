@@ -55,6 +55,7 @@ class BasePostprocessor(object):
         gt_box3d_list = []
         # used to avoid repetitive bounding box
         object_id_list = []
+        unified_id_list = []  # 使用 ass_id 关联后的统一ID列表
 
         for cav_id, cav_content in data_dict.items():
             # used to project gt bounding box to ego space.
@@ -71,6 +72,9 @@ class BasePostprocessor(object):
             object_ids = cav_content['object_ids']
             object_bbx_center = object_bbx_center[object_bbx_mask == 1]
 
+            # 获取 vehicles 信息以访问 ass_id
+            vehicles_info = cav_content.get('vehicles', {})
+            
             # convert center to corner
             object_bbx_corner = \
                 box_utils.boxes_to_corners_3d(object_bbx_center,
@@ -82,18 +86,38 @@ class BasePostprocessor(object):
 
             # append the corresponding ids
             object_id_list += object_ids
+            
+            # 根据 ass_id 生成统一ID用于去重
+            for obj_id in object_ids:
+                # 检查该物体是否在 vehicles_info 中有 ass_id 信息
+                if str(obj_id) in vehicles_info and 'ass_id' in vehicles_info[str(obj_id)]:
+                    ass_id = vehicles_info[str(obj_id)]['ass_id']
+                    if ass_id != -1:
+                        # 使用 ass_id 作为统一ID（CP端关联到Ego端的ID）
+                        unified_id_list.append(ass_id)
+                    else:
+                        # ass_id 为 -1，使用原始ID，但加上 cav_id 偏移避免不同CAV间的ID冲突
+                        unified_id = obj_id + (1000 * hash(str(cav_id)) % 1000)
+                        unified_id_list.append(unified_id)
+                else:
+                    # 没有 vehicles_info 或 ass_id 信息，使用原始ID
+                    # 对于 ego CAV，通常 cav_id 为 'ego'，保持原始ID
+                    if cav_id == 'ego':
+                        unified_id_list.append(obj_id)
+                    else:
+                        # 对于其他 CAV，加上 cav_id 偏移
+                        unified_id = obj_id + (1000 * hash(str(cav_id)) % 1000)
+                        unified_id_list.append(unified_id)
 
         # gt bbx 3d
         gt_box3d_list = torch.vstack(gt_box3d_list)
-        # some of the bbx may be repetitive, use the id list to filter
-        #gt_box3d_selected_indices = [i for i, n in enumerate(object_id_list) if n == -1]
-
+        # some of the bbx may be repetitive, use the unified id list to filter
         # TODO: gt 列表框改称 k-v 字典
-        # gt_object_id_list = sorted(set(object_id_list))
+        # gt_object_id_list = sorted(set(unified_id_list))
         # gt_box3d_selected_indices = \
-        #     [object_id_list.index(x) for x in gt_object_id_list]
+        #     [unified_id_list.index(x) for x in gt_object_id_list]
         gt_box3d_selected_indices = \
-            [object_id_list.index(x) for x in set(object_id_list)]
+            [unified_id_list.index(x) for x in set(unified_id_list)]
         # print(gt_box3d_selected_indices, gt_box3d_selected_indices1)
         gt_box3d_tensor = gt_box3d_list[gt_box3d_selected_indices]
 
@@ -106,6 +130,70 @@ class BasePostprocessor(object):
         selected_object_ids = [object_id_list[i] for i in gt_box3d_selected_indices]
         filtered_object_ids = [selected_object_ids[i] for i in range(len(selected_object_ids)) if mask[i]]
 
+        return gt_box3d_tensor, filtered_object_ids
+
+    def generate_cp_gt_bbx(self, data_dict):
+        """
+        Generate CP ground truth bounding boxes using only CP's local coordinate system.
+        Returns CP's local object IDs (the actual keys from vehicles dict).
+        """
+        cav_content = data_dict['1']
+    
+        # Get vehicles info to access local object IDs
+        vehicles_info = cav_content.get('vehicles', {})
+        if not vehicles_info:
+            device = torch.device('cpu')
+            if 'object_bbx_center' in cav_content:
+                device = cav_content['object_bbx_center'].device
+            return torch.empty(0, 8, 3, device=device), []
+        
+        # Get the raw data
+        object_bbx_center = cav_content['object_bbx_center']  # (1, Max_N, 7)
+        object_bbx_mask = cav_content['object_bbx_mask']     # (1, Max_N,)
+        
+        # Remove batch dimension
+        if len(object_bbx_center.shape) == 3:
+            object_bbx_center = object_bbx_center.squeeze(0)
+        if len(object_bbx_mask.shape) == 2:
+            object_bbx_mask = object_bbx_mask.squeeze(0)
+        
+        # Convert mask to numpy for boolean indexing
+        if isinstance(object_bbx_mask, torch.Tensor):
+            valid_mask = (object_bbx_mask == 1).cpu().numpy()
+            object_bbx_center_valid = object_bbx_center[valid_mask]
+        else:
+            valid_mask = (object_bbx_mask == 1)
+            object_bbx_center_valid = object_bbx_center[valid_mask]
+        
+        if object_bbx_center_valid.shape[0] == 0:
+            device = object_bbx_center.device if hasattr(object_bbx_center, 'device') else torch.device('cpu')
+            return torch.empty(0, 8, 3, device=device), []
+        
+        # The key insight: use vehicles_info keys as the local object IDs
+        # The order should match the valid objects
+        local_object_ids = list(vehicles_info.keys())
+        
+        # Filter to only include valid objects (same count as valid boxes)
+        valid_local_object_ids = local_object_ids[:object_bbx_center_valid.shape[0]]
+        
+        # Convert to corner format
+        if isinstance(object_bbx_center_valid, torch.Tensor):
+            object_bbx_center_valid_np = object_bbx_center_valid.cpu().numpy()
+        else:
+            object_bbx_center_valid_np = object_bbx_center_valid
+            
+        gt_box3d_corner = box_utils.boxes_to_corners_3d(
+            object_bbx_center_valid_np, 
+            self.params['order']
+        )
+        
+        gt_box3d_tensor = torch.from_numpy(gt_box3d_corner).to(object_bbx_center.device)
+        
+        # Range filtering
+        mask_within_range = box_utils.get_mask_for_boxes_within_range_torch(gt_box3d_tensor)
+        gt_box3d_tensor = gt_box3d_tensor[mask_within_range]
+        filtered_object_ids = [int(valid_local_object_ids[i]) for i in range(len(valid_local_object_ids)) if mask_within_range[i]]
+        
         return gt_box3d_tensor, filtered_object_ids
 
     def generate_object_center(self,

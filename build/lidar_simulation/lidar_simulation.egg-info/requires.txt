@@ -1,5 +1,0 @@
-numpy
-open3d
-math
-astropy
-yaml

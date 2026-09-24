@@ -6,6 +6,44 @@ import torch
 
 from opencood.utils.common_utils import torch_tensor_to_numpy
 
+def inference_no_fusion_cp(batch_data, model, dataset):
+    """
+    Model inference for cooperative vehicle in nofusion mode.
+    
+    Parameters
+    ----------
+    batch_data : dict
+    model : opencood.object
+    dataset : opencood.LateFusionDataset
+    
+    Returns
+    -------
+    pred_box_tensor : torch.Tensor
+        The tensor of prediction bounding box after NMS.
+    gt_box_tensor : torch.Tensor
+        The tensor of gt bounding box.
+    """
+    output_dict = OrderedDict()
+
+    for cav_id, cav_content in batch_data.items():
+        if cav_id == '1':
+            # 检查 CP 端是否有有效数据
+            processed_lidar = cav_content.get('processed_lidar', {})
+            voxel_coords = processed_lidar.get('voxel_coords', None)
+            
+            # 如果 CP 端没有有效点云数据，跳过推理
+            if voxel_coords is None or (hasattr(voxel_coords, 'numel') and voxel_coords.numel() == 0):
+                print(f"Warning: CP ({cav_id}) has empty point cloud data, skipping inference.")
+                # 返回空结果
+                return None, None, None, []
+            
+            output_dict[cav_id] = model(cav_content)
+
+    pred_box_tensor, pred_score, gt_box_tensor, gt_object_ids = \
+        dataset.post_process_cp(batch_data,
+                             output_dict)
+
+    return pred_box_tensor, pred_score, gt_box_tensor, gt_object_ids
 
 def inference_no_fusion(batch_data, model, dataset):
     """
